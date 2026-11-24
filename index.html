@@ -1,0 +1,932 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FRUIT LEGENDS - TRUE 4D</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;overflow:hidden;background:#050816;color:white;font-family:Arial,sans-serif}
+canvas{display:block;width:100vw;height:100vh}
+.panel{
+ position:fixed;background:#09152be8;
+ border:1px solid #50dfff66;border-radius:12px;
+ padding:13px;backdrop-filter:blur(12px);
+ box-shadow:0 5px 25px #0008
+}
+#stats{top:12px;left:12px;width:225px}
+#quests{top:12px;right:12px;width:220px}
+#controls{bottom:12px;left:12px;max-width:290px}
+#actions{bottom:12px;right:12px}
+#settings{
+ display:none;top:50%;left:50%;transform:translate(-50%,-50%);
+ z-index:20;width:min(340px,90vw)
+}
+h2{margin:0 0 10px;color:#5eeaff}
+h3{margin:0 0 8px;color:#a2eaff}
+p{margin:7px 0}
+.small{font-size:11px;color:#b7c9e0;line-height:1.55}
+.bar{height:9px;background:#25344c;border-radius:10px;margin:7px 0}
+.fill{height:100%;border-radius:10px}
+#health{background:#21e58c;width:100%}
+#experience{background:#27aaff;width:0%}
+button,select{
+ color:white;background:#153b5b;border:1px solid #50cdeb;
+ padding:9px;border-radius:7px;cursor:pointer;margin:3px
+}
+button:hover{background:#246a91}
+input{accent-color:#4bdfff;max-width:100%}
+#title{
+ position:fixed;top:12px;left:50%;transform:translateX(-50%);
+ letter-spacing:4px;color:#77eaff;font-weight:bold;
+ text-shadow:0 0 15px #00dfff;pointer-events:none
+}
+#message{
+ position:fixed;top:42%;left:50%;transform:translate(-50%,-50%);
+ color:white;font-size:24px;font-weight:bold;text-align:center;
+ text-shadow:0 0 18px #00eaff;pointer-events:none
+}
+#crosshair{
+ position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+ color:#fff;font-size:20px;pointer-events:none
+}
+#bottomHint{
+ position:fixed;bottom:12px;left:50%;transform:translateX(-50%);
+ color:#b6d9f5;font-size:11px;text-align:center;
+ pointer-events:none
+}
+@media(max-width:650px){
+ #quests{display:none}
+ #stats{width:180px}
+ #controls{max-width:180px}
+ #bottomHint{display:none}
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="game"></canvas>
+<div id="title">FRUIT LEGENDS · TRUE 4D</div>
+<div id="crosshair">+</div>
+<div id="message">WELCOME TO THE FOURTH DIMENSION</div>
+
+<div class="panel" id="stats">
+ <h2>🍈 FRUIT LEGENDS</h2>
+ <b id="level">LEVEL 1</b>
+ <p class="small">HEALTH</p>
+ <div class="bar"><div class="fill" id="health"></div></div>
+ <p class="small">EXPERIENCE</p>
+ <div class="bar"><div class="fill" id="experience"></div></div>
+ <p>⭐ XP: <span id="xp">0</span></p>
+ <p>💰 Coins: <span id="coins">0</span></p>
+ <p>W POSITION: <span id="wvalue">0.0</span></p>
+ <p class="small">Current dimension: <span id="dimension">0</span></p>
+</div>
+
+<div class="panel" id="quests">
+ <h3>4D MISSION</h3>
+ <b>Defeat dimensional enemies</b>
+ <p class="small">Find enemies in the 4D world and defeat them.</p>
+ <p id="kills">Enemies: 0 / 5</p>
+ <hr>
+ <p class="small">Move through W to discover different cross-sections of the world.</p>
+</div>
+
+<div class="panel" id="controls">
+ <b>4D CONTROLS</b>
+ <p class="small">
+ WASD: Move in X/Z<br>
+ SPACE: Jump in Y<br>
+ R / F: Move in W<br>
+ SHIFT: Sprint<br>
+ Mouse: Rotate camera<br>
+ I / K: Rotate XW plane<br>
+ U / O: Rotate YW plane<br>
+ J / L: Rotate ZW plane<br>
+ Q: 4D energy attack<br>
+ E: 4D shockwave
+ </p>
+ <p class="small">Click game to capture mouse. ESC releases it.</p>
+</div>
+
+<div id="bottomHint">
+ True 4D geometry · X · Y · Z · W
+</div>
+
+<div class="panel" id="actions">
+ <button onclick="showSettings()">⚙ SETTINGS</button>
+ <button onclick="toggleFullscreen()">⛶ FULLSCREEN</button>
+ <button onclick="saveGame()">💾 SAVE</button>
+</div>
+
+<div class="panel" id="settings">
+ <h2>4D SETTINGS</h2>
+ <p>Rendering quality</p>
+ <select id="quality">
+  <option value="low">Low</option>
+  <option value="medium" selected>Medium</option>
+  <option value="high">High</option>
+ </select>
+ <p>4D perspective strength</p>
+ <input id="perspective" type="range" min="8" max="35" value="18">
+ <p>W movement sensitivity</p>
+ <input id="wspeed" type="range" min="1" max="15" value="6">
+ <p><button onclick="closeSettings()">BACK TO GAME</button></p>
+</div>
+
+<script>
+// ==================================================
+// FRUIT LEGENDS - TRUE FOUR DIMENSIONAL ENGINE
+// ==================================================
+
+// CANVAS
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+
+let width=innerWidth;
+let height=innerHeight;
+let dpr=1;
+
+function resize(){
+ dpr=Math.min(devicePixelRatio||1,2);
+ width=innerWidth;
+ height=innerHeight;
+ canvas.width=width*dpr;
+ canvas.height=height*dpr;
+ canvas.style.width=width+"px";
+ canvas.style.height=height+"px";
+ ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener("resize",resize);
+resize();
+
+// ==================================================
+// FOUR DIMENSIONAL MATHEMATICS
+// ==================================================
+
+// A 4D vector has four independent coordinates.
+const vec4=(x=0,y=0,z=0,w=0)=>[x,y,z,w];
+
+function add4(a,b){
+ return a.map((v,i)=>v+b[i]);
+}
+
+function sub4(a,b){
+ return a.map((v,i)=>v-b[i]);
+}
+
+function distance4(a,b){
+ return Math.sqrt(
+  a.reduce((sum,v,i)=>sum+(v-b[i])**2,0)
+ );
+}
+
+// Rotate two independent coordinates in 4D space.
+function rotatePlane(v,a,b,angle){
+ const c=Math.cos(angle);
+ const s=Math.sin(angle);
+ const x=v[a],y=v[b];
+ v[a]=x*c-y*s;
+ v[b]=x*s+y*c;
+}
+
+// Six independent 4D rotation planes.
+const view={
+ xy:0,xz:0,xw:0,
+ yz:0,yw:0,zw:0
+};
+
+function rotate4(v){
+ const p=[...v];
+
+ rotatePlane(p,0,1,view.xy);
+ rotatePlane(p,0,2,view.xz);
+ rotatePlane(p,0,3,view.xw);
+ rotatePlane(p,1,2,view.yz);
+ rotatePlane(p,1,3,view.yw);
+ rotatePlane(p,2,3,view.zw);
+
+ return p;
+}
+
+// ==================================================
+// TESSERACT GEOMETRY
+// ==================================================
+
+const vertices4=[];
+const edges4=[];
+
+for(let i=0;i<16;i++){
+ vertices4.push([
+  i&1?1:-1,
+  i&2?1:-1,
+  i&4?1:-1,
+  i&8?1:-1
+ ]);
+}
+
+for(let i=0;i<16;i++){
+ for(let bit=0;bit<4;bit++){
+  const j=i^(1<<bit);
+  if(j>i)edges4.push([i,j]);
+ }
+}
+
+// A tesseract contains 16 vertices and 32 edges.
+
+function hypercube(center,size,color,alpha=1){
+ const points=vertices4.map(v=>[
+  center[0]+v[0]*size[0],
+  center[1]+v[1]*size[1],
+  center[2]+v[2]*size[2],
+  center[3]+v[3]*size[3]
+ ]);
+
+ const projected=points.map(project4);
+
+ ctx.lineWidth=1.3;
+ ctx.strokeStyle=color;
+ ctx.globalAlpha=alpha;
+
+ for(const [a,b] of edges4){
+  const p=projected[a];
+  const q=projected[b];
+
+  if(!p||!q)continue;
+
+  ctx.beginPath();
+  ctx.moveTo(p.x,p.y);
+  ctx.lineTo(q.x,q.y);
+  ctx.stroke();
+ }
+
+ ctx.globalAlpha=1;
+}
+
+// ==================================================
+// 4D CAMERA AND PROJECTION
+// ==================================================
+
+const player={
+ position:vec4(0,1,0,0),
+ velocityY:0,
+ jumping:false,
+ health:100,
+ xp:0,
+ coins:0,
+ level:1,
+ kills:0
+};
+
+let yaw=0;
+let pitch=.15;
+let locked=false;
+
+let perspective=18;
+
+function project4(worldPoint){
+ // Move into player-relative coordinates.
+ let p=sub4(worldPoint,player.position);
+
+ // Rotate through four-dimensional space.
+ p=rotate4(p);
+
+ // Perspective projection from 4D to 3D.
+ const denominator=perspective-p[3];
+
+ if(denominator<1.5)return null;
+
+ const factor=perspective/denominator;
+
+ let x=p[0]*factor;
+ let y=p[1]*factor;
+ let z=p[2]*factor;
+
+ // 3D camera transform.
+ let dx=x;
+ let dy=y-2.2;
+ let dz=z+14;
+
+ const cy=Math.cos(yaw);
+ const sy=Math.sin(yaw);
+
+ const rx=cy*dx-sy*dz;
+ const rz=sy*dx+cy*dz;
+
+ const cp=Math.cos(pitch);
+ const sp=Math.sin(pitch);
+
+ const ry=cp*dy-sp*rz;
+ const depth=sp*dy+cp*rz;
+
+ if(depth<.3)return null;
+
+ const focal=Math.min(width,height)*.85;
+
+ return {
+  x:width/2+rx*focal/depth,
+  y:height/2-ry*focal/depth,
+  depth,
+  w:p[3]
+ };
+}
+
+// ==================================================
+// FOUR DIMENSIONAL WORLD
+// ==================================================
+
+const objects=[];
+
+function addWorldObject(name,position,size,color,type="island"){
+ objects.push({
+  name,
+  position:vec4(...position),
+  size,
+  color,
+  type
+ });
+}
+
+// Main 4D island
+addWorldObject(
+ "STARTER ISLAND",
+ [0,-.35,-8,0],
+ [18,.45,24,5],
+ "#52ffac"
+);
+
+// Floating 4D platforms
+addWorldObject(
+ "FLOATING ISLAND",
+ [12,4,-24,5],
+ [5,.6,6,2],
+ "#55eaff"
+);
+
+addWorldObject(
+ "VOID ISLAND",
+ [-13,3,-35,-7],
+ [6,.6,7,2.5],
+ "#c875ff"
+);
+
+addWorldObject(
+ "DIMENSIONAL BRIDGE",
+ [0,1,-45,0],
+ [3,.25,10,3],
+ "#ffd76a"
+);
+
+addWorldObject(
+ "FOURTH DIMENSION PLATFORM",
+ [17,-2,-55,10],
+ [7,.5,8,3],
+ "#ff7bea"
+);
+
+// Decorative 4D structures
+for(let i=0;i<12;i++){
+ const angle=i*Math.PI/6;
+ const x=Math.cos(angle)*22;
+ const z=-15-Math.sin(angle)*25;
+ const w=(i%3-1)*5;
+
+ addWorldObject(
+  "DIMENSIONAL STRUCTURE",
+  [x,2,z,w],
+  [1.5,2,1.5,1.5],
+  "#54d9ff",
+  "structure"
+ );
+}
+
+// ==================================================
+// ENEMIES IN FOUR DIMENSIONS
+// ==================================================
+
+const enemies=[];
+
+function createEnemy(x,y,z,w){
+ enemies.push({
+  position:vec4(x,y,z,w),
+  health:100,
+  alive:true,
+  attackTimer:0,
+  color:"#ff5d91"
+ });
+}
+
+createEnemy(8,1,-12,2);
+createEnemy(-10,1,-20,-3);
+createEnemy(13,1,-32,7);
+createEnemy(-15,1,-39,-8);
+createEnemy(5,1,-50,10);
+
+// ==================================================
+// EFFECTS
+// ==================================================
+
+const effects=[];
+
+function effect(position,size,color,duration=1){
+ effects.push({
+  position:[...position],
+  size:[...size],
+  color,
+  life:duration,
+  max:duration
+ });
+}
+
+// ==================================================
+// 4D PLAYER ATTACK
+// ==================================================
+
+let attackCooldown=0;
+
+function attack(){
+ if(attackCooldown>0)return;
+
+ attackCooldown=.55;
+
+ let hit=false;
+
+ for(const enemy of enemies){
+  if(!enemy.alive)continue;
+
+  if(distance4(player.position,enemy.position)<4.5){
+   enemy.health-=45;
+   hit=true;
+
+   effect(
+    enemy.position,
+    [.8,.8,.8,.8],
+    "#fff18b",
+    .5
+   );
+
+   if(enemy.health<=0)defeat(enemy);
+  }
+ }
+
+ if(hit)showMessage("4D STRIKE!");
+ else showMessage("4D STRIKE");
+}
+
+// ==================================================
+// 4D ENERGY ATTACK
+// ==================================================
+
+let powerCooldown=0;
+
+function fruitPower(){
+ if(powerCooldown>0)return;
+
+ powerCooldown=3;
+
+ effect(
+  player.position,
+  [3,3,3,3],
+  "#ff7a28",
+  .9
+ );
+
+ for(const enemy of enemies){
+  if(!enemy.alive)continue;
+
+  if(distance4(player.position,enemy.position)<8){
+   enemy.health-=75;
+
+   if(enemy.health<=0)defeat(enemy);
+  }
+ }
+
+ showMessage("FOUR DIMENSIONAL ENERGY!");
+}
+
+// ==================================================
+// 4D SHOCKWAVE
+// ==================================================
+
+function shockwave(){
+ if(powerCooldown>0)return;
+
+ powerCooldown=5;
+
+ effect(
+  player.position,
+  [1,1,1,1],
+  "#a65cff",
+  1.5
+ );
+
+ for(const enemy of enemies){
+  if(!enemy.alive)continue;
+
+  if(distance4(player.position,enemy.position)<12){
+   enemy.health-=35;
+
+   if(enemy.health<=0)defeat(enemy);
+  }
+ }
+
+ showMessage("4D SHOCKWAVE!");
+}
+
+// ==================================================
+// GAME PROGRESSION
+// ==================================================
+
+function defeat(enemy){
+ if(!enemy.alive)return;
+
+ enemy.alive=false;
+ player.kills++;
+ player.xp+=30;
+ player.coins+=25;
+
+ if(player.kills===5){
+  player.xp+=100;
+  player.coins+=200;
+  showMessage("MISSION COMPLETE! +200 COINS");
+ }
+
+ updateHUD();
+}
+
+function updateHUD(){
+ document.getElementById("health").style.width=
+  player.health+"%";
+
+ document.getElementById("experience").style.width=
+  (player.xp/(player.level*100)*100)+"%";
+
+ document.getElementById("xp").textContent=player.xp;
+ document.getElementById("coins").textContent=player.coins;
+ document.getElementById("level").textContent=
+  "LEVEL "+player.level;
+
+ document.getElementById("wvalue").textContent=
+  player.position[3].toFixed(1);
+
+ document.getElementById("dimension").textContent=
+  player.position[3].toFixed(1);
+
+ document.getElementById("kills").textContent=
+  "Enemies: "+player.kills+" / 5";
+
+ while(player.xp>=player.level*100){
+  player.xp-=player.level*100;
+  player.level++;
+  player.health=100;
+  showMessage("LEVEL UP! LEVEL "+player.level);
+ }
+}
+
+let messageTimeout;
+
+function showMessage(text){
+ const element=document.getElementById("message");
+ element.textContent=text;
+
+ clearTimeout(messageTimeout);
+
+ messageTimeout=setTimeout(()=>{
+  element.textContent="";
+ },1800);
+}
+
+// ==================================================
+// KEYBOARD CONTROLS
+// ==================================================
+
+const keys={};
+
+document.addEventListener("keydown",e=>{
+ keys[e.code]=true;
+
+ if(e.code==="Space")e.preventDefault();
+
+ if(e.code==="KeyQ")fruitPower();
+ if(e.code==="KeyE")shockwave();
+});
+
+document.addEventListener("keyup",e=>{
+ keys[e.code]=false;
+});
+
+// ==================================================
+// MOUSE CAMERA
+// ==================================================
+
+canvas.addEventListener("click",()=>{
+ canvas.requestPointerLock();
+});
+
+document.addEventListener("pointerlockchange",()=>{
+ locked=document.pointerLockElement===canvas;
+});
+
+document.addEventListener("mousemove",e=>{
+ if(!locked)return;
+
+ yaw-=e.movementX*.002;
+ pitch-=e.movementY*.002;
+
+ pitch=Math.max(-.5,Math.min(.7,pitch));
+});
+
+document.addEventListener("mousedown",e=>{
+ if(e.button===0&&locked)attack();
+});
+
+// ==================================================
+// DRAW 4D ENVIRONMENT
+// ==================================================
+
+function drawBackground(){
+ const gradient=ctx.createLinearGradient(0,0,0,height);
+ gradient.addColorStop(0,"#070b24");
+ gradient.addColorStop(1,"#151034");
+
+ ctx.fillStyle=gradient;
+ ctx.fillRect(0,0,width,height);
+
+ // Stars
+ for(let i=0;i<65;i++){
+  const x=(i*173.5)%width;
+  const y=(i*91.7)%height;
+
+  ctx.fillStyle="#a9eaff";
+  ctx.globalAlpha=.3+(Math.sin(clock+i)*.2);
+  ctx.fillRect(x,y,2,2);
+ }
+ ctx.globalAlpha=1;
+}
+
+function drawWorld(){
+ for(const object of objects){
+  hypercube(
+   object.position,
+   object.size,
+   object.color,
+   object.type==="structure"?.65:1
+  );
+ }
+}
+
+function drawEnemies(){
+ for(const enemy of enemies){
+  if(!enemy.alive)continue;
+
+  hypercube(
+   enemy.position,
+   [.75,1.2,.75,.75],
+   enemy.color
+  );
+
+  const p=project4(enemy.position);
+
+  if(p){
+   ctx.fillStyle="#fff";
+   ctx.font="11px Arial";
+   ctx.textAlign="center";
+   ctx.fillText("4D ENEMY",p.x,p.y-22);
+
+   ctx.fillStyle="#ff315b";
+   ctx.fillRect(p.x-20,p.y-16,40,3);
+
+   ctx.fillStyle="#42f5a5";
+   ctx.fillRect(
+    p.x-20,p.y-16,
+    40*Math.max(0,enemy.health/100),3
+   );
+  }
+ }
+}
+
+function drawPlayer(){
+ hypercube(
+  player.position,
+  [.65,1,.65,.65],
+  "#5cf5ff"
+ );
+
+ const p=project4(player.position);
+
+ if(p){
+  ctx.fillStyle="#ffffff";
+  ctx.font="bold 11px Arial";
+  ctx.textAlign="center";
+  ctx.fillText("PLAYER",p.x,p.y-24);
+ }
+}
+
+function drawEffects(){
+ for(const e of effects){
+  const factor=1+(1-e.life/e.max)*2;
+
+  hypercube(
+   e.position,
+   e.size.map(s=>s*factor),
+   e.color,
+   Math.max(0,e.life/e.max)
+  );
+ }
+}
+
+// ==================================================
+// GAME UPDATE
+// ==================================================
+
+let clock=0;
+let previous=performance.now();
+
+function update(dt){
+ clock+=dt;
+
+ attackCooldown=Math.max(0,attackCooldown-dt);
+ powerCooldown=Math.max(0,powerCooldown-dt);
+
+ // X and Z movement
+ const speed=keys.ShiftLeft?12:7;
+
+ if(keys.KeyW)player.position[2]-=speed*dt;
+ if(keys.KeyS)player.position[2]+=speed*dt;
+ if(keys.KeyA)player.position[0]-=speed*dt;
+ if(keys.KeyD)player.position[0]+=speed*dt;
+
+ // Fourth spatial dimension
+ const wSpeed=Number(
+  document.getElementById("wspeed").value
+ );
+
+ if(keys.KeyR)player.position[3]+=wSpeed*dt;
+ if(keys.KeyF)player.position[3]-=wSpeed*dt;
+
+ // Jumping in Y
+ if(keys.Space&&!player.jumping){
+  player.jumping=true;
+  player.velocityY=10;
+ }
+
+ if(player.jumping){
+  player.velocityY-=23*dt;
+  player.position[1]+=player.velocityY*dt;
+
+  if(player.position[1]<=1){
+   player.position[1]=1;
+   player.jumping=false;
+   player.velocityY=0;
+  }
+ }
+
+ // Keep player in playable region
+ player.position[0]=Math.max(-32,Math.min(32,player.position[0]));
+ player.position[2]=Math.max(-90,Math.min(12,player.position[2]));
+ player.position[3]=Math.max(-25,Math.min(25,player.position[3]));
+
+ // Rotate the camera through 4D planes
+ const rotationSpeed=.8*dt;
+
+ if(keys.KeyI)view.xw+=rotationSpeed;
+ if(keys.KeyK)view.xw-=rotationSpeed;
+
+ if(keys.KeyU)view.yw+=rotationSpeed;
+ if(keys.KeyO)view.yw-=rotationSpeed;
+
+ if(keys.KeyJ)view.zw+=rotationSpeed;
+ if(keys.KeyL)view.zw-=rotationSpeed;
+
+ // Enemies move through four-dimensional space
+ for(const enemy of enemies){
+  if(!enemy.alive)continue;
+
+  const diff=sub4(player.position,enemy.position);
+  const distance=distance4(player.position,enemy.position);
+
+  if(distance<20&&distance>2.5){
+   for(let i=0;i<4;i++){
+    enemy.position[i]+=
+     diff[i]/distance*2*dt;
+   }
+  }
+
+  enemy.attackTimer+=dt;
+
+  if(distance<3&&enemy.attackTimer>1.5){
+   player.health=Math.max(0,player.health-8);
+   enemy.attackTimer=0;
+
+   if(player.health<=0){
+    player.health=100;
+    player.position=vec4(0,1,0,0);
+    player.coins=Math.max(0,player.coins-10);
+    showMessage("RESPAWNED! -10 COINS");
+   }
+
+   updateHUD();
+  }
+ }
+
+ // Effects decay
+ for(let i=effects.length-1;i>=0;i--){
+  effects[i].life-=dt;
+  if(effects[i].life<=0)effects.splice(i,1);
+ }
+}
+
+// ==================================================
+// MAIN RENDER LOOP
+// ==================================================
+
+function render(){
+ const now=performance.now();
+ const dt=Math.min((now-previous)/1000,.04);
+ previous=now;
+
+ update(dt);
+
+ perspective=Number(
+  document.getElementById("perspective").value
+ );
+
+ drawBackground();
+ drawWorld();
+ drawEnemies();
+ drawEffects();
+ drawPlayer();
+
+ requestAnimationFrame(render);
+}
+
+updateHUD();
+render();
+
+// ==================================================
+// SETTINGS AND SAVE
+// ==================================================
+
+window.showSettings=()=>{
+ document.getElementById("settings").style.display="block";
+ if(locked)document.exitPointerLock();
+};
+
+window.closeSettings=()=>{
+ document.getElementById("settings").style.display="none";
+};
+
+window.toggleFullscreen=()=>{
+ if(!document.fullscreenElement){
+  document.documentElement.requestFullscreen?.();
+ }else{
+  document.exitFullscreen?.();
+ }
+};
+
+document.getElementById("quality").onchange=e=>{
+ const value=e.target.value;
+
+ // Controls rendering detail.
+ const stars=value==="low"?25:
+             value==="medium"?65:120;
+
+ ctx.lineWidth=value==="low"?1:1.3;
+ showMessage(value.toUpperCase()+" QUALITY");
+};
+
+window.saveGame=()=>{
+ const data={
+  position:player.position,
+  health:player.health,
+  xp:player.xp,
+  coins:player.coins,
+  level:player.level,
+  kills:player.kills
+ };
+
+ localStorage.setItem("fruitLegends4D",JSON.stringify(data));
+ showMessage("GAME SAVED!");
+};
+
+// Restore locally saved progression
+try{
+ const saved=JSON.parse(
+  localStorage.getItem("fruitLegends4D")
+ );
+
+ if(saved){
+  player.position=saved.position;
+  player.health=saved.health;
+  player.xp=saved.xp;
+  player.coins=saved.coins;
+  player.level=saved.level;
+  player.kills=saved.kills;
+  updateHUD();
+ }
+}catch(e){}
+</script>
+</body>
+</html>
